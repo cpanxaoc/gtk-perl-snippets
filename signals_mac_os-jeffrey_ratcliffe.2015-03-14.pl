@@ -13,6 +13,7 @@ Readonly my $_1KB           => 1024;
 my $EMPTY = q{};
 
 # Create the windows
+warn qq(Creating window...\n);
 my $window  = Gtk2::Window->new('toplevel');
 my $box     = Gtk2::VBox->new;
 my $entry   = Gtk2::Entry->new;
@@ -33,23 +34,29 @@ $window->show_all;
 Gtk2->main;
 
 sub start_process {
+    warn qq(start_process\n);
     watch_cmd(
         cmd              => 'for i in `seq 1 5`; do echo $i; sleep 1; done',
         running_callback => sub {
+            warn qq(pbar->pulse\n);
             $pbar->pulse;
         },
         started_callback => sub {
+            warn qq(started_callback\n);
             $pbar->set_text('Started');
         },
         out_callback => sub {
+            warn qq(out_callback\n);
             my ($line) = @_;
             $pbar->set_text($line);
         },
         err_callback => sub {
+            warn qq(err_callback\n);
             my ($line) = @_;
             $pbar->set_text("Error: $line");
         },
         finished_callback => sub {
+            warn qq(finished_callback\n);
             $pbar->set_text('Finished');
         },
     );
@@ -62,7 +69,7 @@ sub watch_cmd {
     my $out_finished = FALSE;
     my $err_finished = FALSE;
     my $error_flag   = FALSE;
-    print "$options{cmd}\n";
+    print "command: $options{cmd}\n";
 
     if ( defined $options{running_callback} ) {
         my $timer = Glib::Timeout->add(
@@ -79,9 +86,12 @@ sub watch_cmd {
     my ( $write, $read );
     my $error = IO::Handle->new;
     my $pid = IPC::Open3::open3( $write, $read, $error, $options{cmd} );
-    print "Forked PID $pid\n";
+    print "IPC::Open3 PID: $pid\n";
 
-    if ( defined $options{started_callback} ) { $options{started_callback}->() }
+    if ( defined $options{started_callback} ) {
+        warn qq(calling started_callback\n);
+        $options{started_callback}->()
+    }
     my ( $stdout, $stderr, $error_message );
 
     add_watch(
@@ -90,6 +100,7 @@ sub watch_cmd {
             my ($line) = @_;
             $stdout .= $line;
             if ( defined $options{out_callback} ) {
+                warn qq(add_watch, calling out_callback: $line\n);
                 $options{out_callback}->($line);
             }
         },
@@ -110,6 +121,7 @@ sub watch_cmd {
             my ($line) = @_;
             $stderr .= $line;
             if ( defined $options{err_callback} ) {
+                warn qq(add_watch, calling err_callback: $line\n);
                 $options{err_callback}->($line);
             }
         },
